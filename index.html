@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Order System</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            gap: 15px;
+        }
+
+        .item-index {
+            width: 30px;
+            font-weight: bold;
+        }
+
+        /* 菜品名称（hover区域） */
+        .item-name {
+            width: 220px;
+            cursor: pointer;
+        }
+        .dish-name {
+            text-decoration: underline;
+        }
+
+
+        .qty-label {
+            width: 80px;
+        }
+
+        .qty {
+            width: 60px;
+        }
+
+        .print-btn {
+            margin-top: 20px;
+        }
+
+        #summary {
+            margin: 40px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: #f5f5f5;
+            width: 450px;
+        }
+
+        #total {
+            font-weight: bold;
+            color: blue;
+            margin-top: 15px;
+            font-size: 18px;
+        }
+
+        /* Hover图片浮窗 */
+        #imagePreview {
+            position: absolute;
+            display: none;
+            pointer-events: none;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 999;
+        }
+
+        #imagePreview img {
+            width: 220px;
+            height: auto;
+            display: block;
+        }
+
+        /* 打印时只打印summary */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #summary,
+            #summary * {
+                visibility: visible;
+            }
+
+            #summary {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+
+            button {
+                display: none;
+            }
+        }
+
+
+.heart {
+    position: absolute;
+    font-size: 18px;
+    pointer-events: none;
+    animation: floatUp 1.5s linear forwards;
+    z-index: 9999;
+}
+
+@keyframes floatUp {
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(15px, -80px) scale(1.6);
+    }
+}
+
+
+    </style>
+</head>
+
+<body>
+
+<h1>Restaurant Menu</h1>
+
+<!-- 菜单自动生成区域 -->
+<div id="menu"></div>
+
+<!-- 汇总区域 -->
+<div id="summary">
+    <h2>Your Order</h2>
+
+    <div id="selectedItems">
+        Nothing selected
+    </div>
+
+    <div id="total">
+        Total: £0.00
+    </div>
+
+    <button class="print-btn" onclick="window.print()">
+        Print Order
+    </button>
+</div>
+
+<!-- Hover 图片浮窗 -->
+<div id="imagePreview">
+    <img id="previewImg" src="" alt="Dish Image">
+</div>
+
+<!-- menu.js -->
+<script>
+const menu = [
+    {
+        name: "Pizza",
+        price: 8,
+        image: "images/pizza.jpg"
+    },
+    {
+        name: "Burger",
+        price: 6,
+        image: "images/burger.jpg"
+    },
+    {
+        name: "Salad",
+        price: 5,
+        image: "images/salad.jpg"
+    },
+    {
+        name: "Soup",
+        price: 4.2,
+        image: "images/soup.jpg"
+    }
+];
+</script>
+
+<script>
+    const menuContainer = document.getElementById("menu");
+    const selectedItems = document.getElementById("selectedItems");
+    const total = document.getElementById("total");
+
+    const imagePreview = document.getElementById("imagePreview");
+    const previewImg = document.getElementById("previewImg");
+
+    /* 1. 自动生成菜单 */
+    menu.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "menu-item";
+
+        div.innerHTML = `
+            <div class="item-index">${index + 1}.</div>
+
+            <div 
+                class="item-name"
+                data-image="${item.image}"
+            >
+                <span class="dish-name">${item.name}</span> - £${Number(item.price).toFixed(2)}
+            </div>
+
+            <div class="qty-label">Quantity:</div>
+
+            <input
+                type="number"
+                class="qty"
+                min="1"
+                value="1"
+                data-price="${item.price}"
+                data-name="${item.name}"
+            >
+
+            <input
+                type="checkbox"
+                class="item-check"
+            >
+        `;
+
+        menuContainer.appendChild(div);
+    });
+
+    /* 2. 更新订单汇总 */
+    function updateOrder() {
+        const quantities = document.querySelectorAll(".qty");
+        const checkboxes = document.querySelectorAll(".item-check");
+
+        let totalPrice = 0;
+        let list = [];
+
+        quantities.forEach((qtyInput, index) => {
+            const checkbox = checkboxes[index];
+
+            if (checkbox.checked) {
+                let qty = Number(qtyInput.value);
+                let price = Number(qtyInput.dataset.price);
+                let name = qtyInput.dataset.name;
+
+                if (qty < 1 || isNaN(qty)) {
+                    qty = 1;
+                    qtyInput.value = 1;
+                }
+
+                let itemTotal = Math.round(qty * price * 100) / 100;
+                totalPrice += itemTotal;
+
+                list.push(
+                    name + " x " + qty + " = £" + itemTotal.toFixed(2)
+                );
+            }
+        });
+
+        if (list.length > 0) {
+            selectedItems.innerHTML = list.join("<br>");
+        } else {
+            selectedItems.innerHTML = "Nothing selected";
+        }
+
+        total.innerHTML =
+            "Total: £" + totalPrice.toFixed(2);
+    }
+
+    /* 3. checkbox变化 */
+    document.addEventListener("change", function(e) {
+        if (e.target.classList.contains("item-check")) {
+            updateOrder();
+        }
+    });
+
+    /* 4. 数量变化 */
+    document.addEventListener("input", function(e) {
+        if (e.target.classList.contains("qty")) {
+            updateOrder();
+        }
+    });
+
+    /* 5. Hover显示图片 */
+    document.addEventListener("mouseover", function(e) {
+    const itemName = e.target.closest(".item-name");
+
+    if (itemName) {
+        const imagePath = itemName.dataset.image;
+
+        previewImg.src = imagePath;
+        imagePreview.style.display = "block";
+    }
+});
+
+    /* 6. 图片跟随鼠标 */
+    document.addEventListener("mousemove", function(e) {
+        imagePreview.style.left = (e.pageX + 20) + "px";
+        imagePreview.style.top = (e.pageY + 20) + "px";
+    });
+
+    /* 7. 鼠标离开隐藏图片 */
+    document.addEventListener("mouseout", function(e) {
+    const itemName = e.target.closest(".item-name");
+
+    if (itemName) {
+        imagePreview.style.display = "none";
+    }
+});
+
+
+let maxStars = 20;
+let currentStars = 0;
+let lastTime = 0;
+
+document.addEventListener("mousemove", function(e) {
+    let now = Date.now();
+
+    if (now - lastTime < 25) return;
+
+    if (currentStars >= maxStars) return;
+
+    lastTime = now;
+
+    const heart = document.createElement("div");
+
+    heart.innerHTML = "❤️";
+    heart.className = "heart";
+
+    heart.style.left = e.pageX + "px";
+    heart.style.top = e.pageY + "px";
+
+    document.body.appendChild(heart);
+
+    currentStars++;
+
+    setTimeout(() => {
+        heart.remove();
+        currentStars--;
+    }, 1500);
+});
+
+</script>
+
+</body>
+</html>
